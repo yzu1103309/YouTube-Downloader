@@ -4,7 +4,7 @@ Download YouTube videos and audio with ease. GUI for yt-dlp written in Qt C++.
 
 ## Installation
 
-Support Ubuntu 22.04 and Windows (tested)
+Support Ubuntu 22.04 and Windows (both tested)
 
 Download .deb or .exe from release tab and install.
 
