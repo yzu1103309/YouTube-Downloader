@@ -18,5 +18,7 @@ such as Download mode (single video or playlist), video or audio, quality, and w
 
 Besides YouTube, you can also try to download from other websites (yt-dlp supports loads of sites).
 
+(For some sites that isn't supported natively, you can find the m3u8 url for the video and paste it.)
+
 The program will organize the downloaded files in a pleasant structure
 
