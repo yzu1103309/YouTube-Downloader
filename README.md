@@ -12,12 +12,10 @@ Download .deb or .exe from release tab and install.
 
 This program runs [yt-dlp](https://github.com/yt-dlp/yt-dlp) in backend (already packed in the release packages)
 
-You can easily adjust some basic settings with our GUI, such as Download mode (single video or playlist), video or audio, quality, and whether to download the subbtitles
+You can easily adjust some basic settings with our GUI, such as Download mode (single video or playlist), video or audio, quality, and whether to download the subtitles
 
 Besides YouTube, you can also try to download from other websites (yt-dlp supports loads of sites).
 
-(For some sites that isn't supported natively, you can find the m3u8 url for the video and paste it.)
+(For some sites that isn't supported natively, you can find the m3u8 url of the video and paste it.)
 
 The program will organize the downloaded files in a pleasant structure
-
-//
