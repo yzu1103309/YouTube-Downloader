@@ -1,10 +1,54 @@
 #include <QLayout>
 #include <QFormLayout>
 #include <QScreen>
+#include <QClipboard>
+#include <QApplication>
+#include <QMessageBox>
+#include <fstream>
 #include "Window.h"
 
 int fixedW = 1000;
 int fixedH = 550;
+
+string Window::getSavedPath()
+{
+    fstream ioFile("./path.dat", ios::binary | ios::in);
+    string dir = "$HOME/Downloads/YouTube Downloader";
+    if(ioFile)
+    {
+        getline(ioFile, dir);
+    }
+    return dir;
+}
+
+void Window::closeEvent(QCloseEvent *event)
+{
+    fstream ioFile("./path.dat", ios::binary | ios::out);
+    if(ioFile)
+    {
+        ioFile << path->text().toStdString();
+    }
+
+    if(downloader->state() == QProcess::NotRunning)
+    {
+        event->accept();
+    }
+    else
+    {
+        QMessageBox msg;
+        msg.setText("Stop job and exit?");
+        msg.setStandardButtons(QMessageBox::Yes | QMessageBox::Cancel);
+        int rtn = msg.exec();
+        if(rtn == QMessageBox::Yes)
+        {
+            event->accept();
+        }
+        else
+        {
+            event->ignore();
+        }
+    }
+}
 
 Window::Window()
 {
@@ -14,6 +58,11 @@ Window::Window()
     setFixedHeight(fixedH);
     move(screen()->geometry().center() - frameGeometry().center());
     initLayout();
+
+    copy = new QPushButton("Copy Command");
+    copy->setFixedWidth(150);
+    copy->setFixedHeight(40);
+    connect(copy, &QPushButton::clicked, this, &Window::copyCommand);
 
     download = new QPushButton("Download");
     download->setFixedWidth(150);
@@ -28,6 +77,8 @@ Window::Window()
     QHBoxLayout *action_area = new QHBoxLayout();
     action_area->addStretch();
     action_area->addWidget(download, 0, Qt::AlignCenter);
+    action_area->addSpacerItem(new QSpacerItem(20, 0));
+    action_area->addWidget(copy, 0, Qt::AlignCenter);
     action_area->addSpacerItem(new QSpacerItem(20, 0));
     action_area->addWidget(stop, 0, Qt::AlignCenter);
     action_area->addStretch();
@@ -67,19 +118,24 @@ void Window::initLayout()
 
     opt_area = new QGroupBox;
     quality = new QComboBox;
+    codec = new QComboBox;
+    Window::showCodecOpt();
     initButtons();
     QHBoxLayout *layout2 = new QHBoxLayout;
     layout2->addWidget(new QLabel("Options: "));
     layout2->addWidget(video);
     layout2->addWidget(audio);
     layout2->addWidget(quality);
+    layout2->addSpacerItem(new QSpacerItem(25, 0));
+    layout2->addWidget(codec);
     layout2->addWidget(subs, 0,Qt::AlignRight);
     opt_area->setLayout(layout2);
 
     path_area = new QGroupBox;
     path = new QLineEdit;
     path->setReadOnly(true);
-    path->setText("$HOME/Downloads/YouTube Downloader");
+    string dir = getSavedPath();
+    path->setText(dir.c_str());
     choosePath = new QPushButton("Choose");
     choosePath->setIcon(QIcon::fromTheme("inode-directory"));
     connect(choosePath, &QPushButton::clicked, this, &Window::chooseDir);
@@ -120,130 +176,180 @@ void Window::initButtons()
     type_grp->addButton(audio);
 }
 
+bool Window::optionsOK(const QString& url_text, const QString& dir, size_t youtube_url_pos)
+{
+    if(url_text.isEmpty())
+    {
+        status->setText("[ERROR] URL Required");
+        return false;
+    }
+    if(dir.isEmpty())
+    {
+        status->setText("[ERROR] Choose a directory to store the file");
+        return false;
+    }
+    if(single->isChecked() && youtube_url_pos != string::npos)
+    {
+        size_t watch_found = url_text.toStdString().find("watch");
+        size_t short_found = url_text.toStdString().find("short");
+        if(watch_found == string::npos && short_found == string::npos)
+        {
+            status->setText("[ERROR] This url doesn't seem to contain any video.\nMaybe it's a playlist? Change to playlist mode and retry.");
+            return false;
+        }
+    }
+    if(multiple->isChecked())
+    {
+        size_t found = url_text.toStdString().find("list");
+        if(found == string::npos)
+        {
+            status->setText("[ERROR] This url doesn't seem to be a playlist.\nMaybe it's a video? Change to video mode and retry.");
+            return false;
+        }
+    }
+    return true;
+}
+
+QStringList Window::writeArgs(const QString& url_text, const QString& dir, size_t youtube_url_pos, size_t youtube_share_pos)
+{
+    QStringList args = (
+            QStringList() << url_text.toStdString().c_str()
+                          << "--paths" << dir.toStdString().c_str() << "--no-color"
+    );
+    string kbps;
+    args << "--format";
+    if(video->isChecked())
+    {
+        if(youtube_url_pos != string::npos || youtube_share_pos != string::npos)
+        {
+            switch (quality->currentIndex()) {
+                case 0: // best video
+                    args << "bv[ext=mp4]+ba[ext=m4a]";
+                    break;
+                case 1:
+                    args << "bv[ext=mp4][height=1080]+ba[ext=m4a]";
+                    break;
+                case 2:
+                    args << "bv[ext=mp4][height=720]+ba[ext=m4a]";
+                    break;
+                case 3:
+                    args << "bv[ext=mp4][height=480]+ba[ext=m4a]";
+            }
+        }
+        else
+        {
+            args << "bv*+ba*";
+        }
+        switch (codec->currentIndex()) {
+            case 1:
+                args << "-S" << "vcodec:vp9";
+                break;
+            case 2:
+                args << "-S" << "vcodec:h264";
+                break;
+            case 3:
+                args << "-S" << "vcodec:av1";
+        }
+    }
+    else
+    {
+        if(youtube_url_pos != string::npos || youtube_share_pos != string::npos)
+        {
+            args << "ba[ext=m4a]" << "-x" << "--audio-format" << "mp3" << "--audio-quality";
+        }
+        else
+        {
+            args << "ba*" << "-x" << "--audio-format" << "mp3" << "--audio-quality";
+        }
+        switch (quality->currentIndex()) {
+            case 0: // best audio
+                kbps = "320k";
+                break;
+            case 1:
+                kbps = "320k";
+                break;
+            case 2:
+                kbps = "256k";
+                break;
+            case 3:
+                kbps = "192k";
+        }
+        args << kbps.c_str();
+    }
+
+    if(video->isChecked() && subs->isChecked())
+        args << "--write-subs" << "--sub-langs" << "all" << "--convert-subs" << "srt";
+
+    if(single->isChecked())
+        args << "--no-playlist";
+    else
+        args << "--yes-playlist";
+
+    string o_template;
+    if(multiple->isChecked())
+    {
+        if(video->isChecked())
+            o_template = "[Playlist] %(playlist)s/%(playlist_index)s - %(title)s/%(playlist_index)s - %(title)s [%(height)sp].%(ext)s";
+        else
+            o_template = "[Playlist] %(playlist)s/%(playlist_index)s - %(title)s ["+kbps+"].%(ext)s";
+    }
+    else
+    {
+        if(video->isChecked())
+            o_template = "%(title)s/%(title)s [%(height)sp].%(ext)s";
+        else
+            o_template = "%(title)s ["+kbps+"].%(ext)s";
+    }
+    args << "-o" << o_template.c_str();
+
+    return args;
+}
+
+void Window::copyCommand()
+{
+    QClipboard *clipboard = QApplication::clipboard();
+    QString url_text = url->text();
+    QString dir = path->text();
+    size_t youtube_url = url_text.toStdString().find("youtube");
+    // consider sharing short link: https://youtu.be/xxx
+    size_t youtube_share_url = url_text.toStdString().find("youtu.be");
+
+    if(!optionsOK(url_text, dir, youtube_url)) return;
+
+    QStringList args = writeArgs(url_text, dir, youtube_url, youtube_share_url);
+
+    QString args_str = "yt-dlp";
+    for (int t = 0; t < args.size(); ++t)
+    {
+        args_str += " ";
+        args_str += "\"" + args[t] + "\"";
+    }
+    clipboard->setText(args_str);
+    status->setText("[Message] Command copied to clipboard!\nOpen command line and paste.");
+}
+
 void Window::startDownload()
 {
     if(downloader->state() == QProcess::NotRunning)
     {
         percent[0] = '0';
         percent[1] = '0';
-        percent[1] = '0';
+        percent[2] = '0';
         progress->setValue(0);
+
         QString url_text = url->text();
         QString dir = path->text();
         size_t youtube_url = url_text.toStdString().find("youtube");
-        if(url_text.isEmpty())
-        {
-            status->setText("[ERROR] URL Required");
-            return;
-        }
-        if(dir.isEmpty())
-        {
-            status->setText("[ERROR] Choose a directory to store the file");
-            return;
-        }
-        if(single->isChecked() && youtube_url != string::npos)
-        {
-            size_t watch_found = url_text.toStdString().find("watch");
-            size_t short_found = url_text.toStdString().find("short");
-            if(watch_found == string::npos && short_found == string::npos)
-            {
-                status->setText("[ERROR] This url doesn't seem to contain any video.\nMaybe it's a playlist? Change to playlist mode and retry.");
-                return;
-            }
-        }
-        if(multiple->isChecked())
-        {
-            size_t found = url_text.toStdString().find("list");
-            if(found == string::npos)
-            {
-                status->setText("[ERROR] This url doesn't seem to be a playlist.\nMaybe it's a video? Change to video mode and retry.");
-                return;
-            }
-        }
+        // consider sharing short link: https://youtu.be/xxx
+        size_t youtube_share_url = url_text.toStdString().find("youtu.be");
+
+        if(!optionsOK(url_text, dir, youtube_url)) return;
+
+        QStringList args = writeArgs(url_text, dir, youtube_url, youtube_share_url);
+
         status->setText("Start downloading");
         repaint();
 
-        QStringList args = (
-                QStringList() << url_text.toStdString().c_str()
-                << "--paths" << dir.toStdString().c_str() << "--no-color"
-        );
-        string kbps;
-        args << "--format";
-        if(video->isChecked())
-        {
-            if(youtube_url != string::npos)
-            {
-                switch (quality->currentIndex()) {
-                    case 0: // best video
-                        args << "bv[ext=mp4]+ba[ext=m4a]";
-                        break;
-                    case 1:
-                        args << "bv[ext=mp4][height=1080]+ba[ext=m4a]";
-                        break;
-                    case 2:
-                        args << "bv[ext=mp4][height=720]+ba[ext=m4a]";
-                        break;
-                    case 3:
-                        args << "bv[ext=mp4][height=480]+ba[ext=m4a]";
-                }
-            }
-            else
-            {
-                args << "bv*+ba*";
-            }
-        }
-        else
-        {
-            if(youtube_url != string::npos)
-            {
-                args << "ba[ext=m4a]" << "-x" << "--audio-format" << "mp3" << "--audio-quality";
-            }
-            else
-            {
-                args << "ba*" << "-x" << "--audio-format" << "mp3" << "--audio-quality";
-            }
-            switch (quality->currentIndex()) {
-                case 0: // best audio
-                    kbps = "320k";
-                    break;
-                case 1:
-                    kbps = "320k";
-                    break;
-                case 2:
-                    kbps = "256k";
-                    break;
-                case 3:
-                    kbps = "192k";
-            }
-            args << kbps.c_str();
-        }
-
-        if(video->isChecked() && subs->isChecked())
-            args << "--write-subs" << "--sub-langs" << "all" << "--convert-subs" << "srt";
-
-        if(single->isChecked())
-            args << "--no-playlist";
-        else
-            args << "--yes-playlist";
-
-        string o_template;
-        if(multiple->isChecked())
-        {
-            if(video->isChecked())
-                o_template = "[Playlist] %(playlist)s/%(playlist_index)s - %(title)s/%(playlist_index)s - %(title)s [%(height)sp].%(ext)s";
-            else
-                o_template = "[Playlist] %(playlist)s/%(playlist_index)s - %(title)s ["+kbps+"].%(ext)s";
-        }
-        else
-        {
-            if(video->isChecked())
-                o_template = "%(title)s/%(title)s [%(height)sp].%(ext)s";
-            else
-                o_template = "%(title)s ["+kbps+"].%(ext)s";
-        }
-        args << "-o" << o_template.c_str();
-
-        //qDebug() << args;
         delete downloader;
         downloader = new QProcess;
         downloader->start("yt-dlp", args);

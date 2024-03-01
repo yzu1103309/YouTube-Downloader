@@ -2,6 +2,7 @@
 #define QT_PROJECT_WINDOW_H
 
 #include <QWidget>
+#include <QCloseEvent>
 #include <QCheckBox>
 #include <QPushButton>
 #include <QGroupBox>
@@ -37,12 +38,14 @@ private:
     QRadioButton *video;
     QRadioButton *audio;
     QComboBox *quality;
+    QComboBox *codec;
     QCheckBox *subs;
 
     QLineEdit *path;
     QPushButton *choosePath;
     QProcess *downloader = new QProcess;
 
+    QPushButton *copy;
     QPushButton *download;
     QPushButton *stop;
 
@@ -51,6 +54,10 @@ private:
 
     string command;
     char percent[3];
+
+    string getSavedPath();
+
+    void closeEvent(QCloseEvent *event) override;
 
     void initLayout();
     void initButtons();
@@ -62,6 +69,7 @@ private:
         quality->addItem("1080p");
         quality->addItem("720p");
         quality->addItem("480p");
+        codec->setEnabled(true);
     }
     void showAudOpt()
     {
@@ -70,6 +78,15 @@ private:
         quality->addItem("320k");
         quality->addItem("256k");
         quality->addItem("192k");
+        codec->setDisabled(true);
+    }
+    void showCodecOpt()
+    {
+        codec->clear();
+        codec->addItem("Default Codec");
+        codec->addItem("VP9");
+        codec->addItem("H.264");
+        codec->addItem("AV1 (if supported)");
     }
     void chooseDir()
     {
@@ -79,8 +96,11 @@ private:
             path->setText(dir);
         }
     }
+    bool optionsOK(const QString& url_text, const QString& dir, size_t youtube_url_pos);
+    QStringList writeArgs(const QString& url_text, const QString& dir, size_t youtube_url_pos, size_t youtube_share_pos);
     void startDownload();
     void stopJob();
+    void copyCommand();
 private slots:
     void getOutput();
     void getError();
