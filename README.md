@@ -36,3 +36,15 @@ Besides YouTube, you can also try to download from other websites (yt-dlp suppor
 (For some sites that isn't supported natively, you can find the m3u8 url of the video and paste it.)
 
 The program will organize the downloaded files in a pleasant structure
+
+## Troubleshooting
+
+If you encounter a "403 Forbidden" error while downloading with the latest release, it might be because the bundled version of yt-dlp is outdated.
+
+To resolve this, open a terminal with administrator privileges and run the command:
+```
+yt-dlp --update
+```
+This will update the backend program.
+
+(Note: The frontend UI is functioning correctly, so I will not release a new version unless a future yt-dlp update causes incompatibility with it.)
