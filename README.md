@@ -39,7 +39,7 @@ The program will organize the downloaded files in a pleasant structure
 
 ## Troubleshooting
 
-If you encounter a "403 Forbidden" error while downloading with the latest release, it might be because the bundled version of yt-dlp is outdated.
+If you encounter a "403 Forbidden" error (or other errors) while downloading with the latest release, it might be because the bundled version of yt-dlp is outdated.
 
 To resolve this, open a terminal with administrator privileges and run the command:
 ```
