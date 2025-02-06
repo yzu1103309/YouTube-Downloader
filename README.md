@@ -30,7 +30,7 @@ The program will organize the downloaded files in a pleasant structure
 
 [Fixes] YouTube sharing link 'yout.be' is now working correctly.
 
-## Installation
+## 📥 Installation
 
 Support Ubuntu (>=22.04) and Windows (both tested)
 
@@ -48,17 +48,22 @@ yt-dlp --update
 ```
 This will update the backend program.
 
-(Note: The frontend UI is functioning correctly, so I will not release a new version unless a future yt-dlp update causes incompatibility with it.)
+(Note: The frontend UI is functioning correctly, so I will not release a new version until a future yt-dlp update causes incompatibility with it.)
 
 ### Windows Defender SmartScreen 🚨
 
-In Windows, the setup.exe might be considered as unsafe by Windows Defender SmartScreen (Which is quite annoying ...)
+In Windows, the setup.exe might be flagged as unsafe by Windows Defender SmartScreen (which is quite annoying ...)
 
-And in some cases, there isn't the "Run Anyway" Option.
+And in some cases, there isn't the "Run Anyway" option.
 
 If so, you can bypass the warning by launching the setup manually via the command line:
 
 1. Open `cmd` or `powershell`
-2. Type in the absolute path of the setup.exe file
+2. Type in the absolute path of the downloaded setup exe file
 
 The installation program should start without warning.
+
+## 🚀 Future Plans  
+
+- Automatically run `yt-dlp --update` during installation, allowing users to simply re-run the installer to update the backend program.  
+- Consider signing the setup program to prevent Windows from flagging it as untrusted.  
